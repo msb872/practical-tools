@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MultiTools</title>
+  <!-- تهیه کننده : مصیب خانی -->
+  <!-- کتابخانه‌های مورد نیاز -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.0/JsBarcode.all.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 20px;
+      direction: rtl;
+    }
+    .container {
+      max-width: 1000px;
+      margin: auto;
+    }
+    .tabs {
+      overflow: hidden;
+      background-color: #333;
+      margin-bottom: 20px;
+    }
+    .tabs button {
+      background-color: inherit;
+      float: left;
+      border: none;
+      outline: none;
+      cursor: pointer;
+      padding: 14px 16px;
+      transition: 0.3s;
+      font-size: 17px;
+      color: #f2f2f2;
+    }
+    .tabs button:hover {
+      background-color: #575757;
+    }
+    .tabs button.active {
+      background-color: #04AA6D;
+    }
+    .tabcontent {
+      display: none;
+      padding: 20px;
+      border: 1px solid #ccc;
+      border-top: none;
+      text-align: center;
+    }
+    /* سبک‌های مشترک */
+    textarea {
+      width: 100%;
+      height: 100px;
+      font-size: 16px;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    select, input[type="number"] {
+      padding: 8px;
+      font-size: 16px;
+      margin: 10px;
+    }
+    button {
+      padding: 10px 20px;
+      cursor: pointer;
+      background-color: #007BFF;
+      color: white;
+      border-radius: 5px;
+      border: none;
+      margin: 10px;
+    }
+    /* تب بارکد */
+    #charCount { font-weight: bold; margin-left: 5px; }
+    .barcode-container canvas {
+      margin: 10px;
+      border: 1px solid #ccc;
+    }
+    /* تب QR Code */
+    #qrCharCount { font-weight: bold; margin-left: 5px; }
+    .qr-container .qr-item {
+      display: inline-block;
+      margin: 10px;
+      padding: 10px;
+      border: 1px solid #ccc;
+    }
+    .qr-item div.caption {
+      margin-top: 8px;
+      font-size: 14px;
+    }
+    #formatGuideline {
+      margin: 10px 0;
+      font-style: italic;
+      color: #555;
+    }
+    /* تب کاهش حجم تصویر */
+    #imageInfo {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    #compressedCanvas {
+      max-width: 90%;
+      border: 1px solid #ccc;
+      margin-top: 10px;
+    }
+    /* تب ویرایش عکس */
+    .edit-controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    #editCanvas {
+      border: 1px solid #ccc;
+      max-width: 100%;
+      margin-top: 20px;
+    }
+    /* در بخش تغییر اندازه عکس */
+    #resizeControls {
+      margin-top: 15px;
+    }
+    #resizeControls label {
+      font-size: 16px;
+      margin: 0 5px;
+    }
+    /* تب گالری تصاویر */
+    .gallery-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+    }
+    .image-box {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: center;
+      max-width: 200px;
+    }
+    .image-box img {
+      max-width: 100%;
+      border-radius: 5px;
+    }
+    .image-box textarea {
+      width: 100%;
+      height: 50px;
+      margin-top: 5px;
+      font-size: 14px;
+    }
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    /* تب تبدیل واحد */
+    #unitSelectors select {
+      margin: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Multi Tools By: MSB_Khani</h2>
+    
+    <!-- منوی تب‌ها -->
+    <div class="tabs">
+      <button class="tablinks" onclick="openTab(event, 'barcodeTab')" id="defaultOpen">بارکد</button>
+      <button class="tablinks" onclick="openTab(event, 'qrTab')">QR Code</button>
+      <button class="tablinks" onclick="openTab(event, 'compressTab')">کاهش حجم تصویر</button>
+      <button class="tablinks" onclick="openTab(event, 'editTab')">ویرایش عکس</button>
+      <button class="tablinks" onclick="openTab(event, 'galleryTab')">گالری تصاویر</button>
+      <button class="tablinks" onclick="openTab(event, 'convertTab')">تبدیل واحد</button>
+    </div>
+    
+    <!-- تب بارکد -->
+    <div id="barcodeTab" class="tabcontent">
+      <h3>تولید و ذخیره بارکد</h3>
+      <textarea id="barcodeInput" placeholder="اطلاعات بارکد را وارد کنید (هر خط یک بارکد)"></textarea>
+      <div>تعداد کاراکتر: <span id="charCount">0</span></div>
+      <select id="format">
+        <option value="CODE128">Code 128</option>
+        <option value="CODE39">Code 39</option>
+        <option value="EAN13">EAN 13</option>
+        <option value="EAN8">EAN 8</option>
+        <option value="ITF">ITF</option>
+        <option value="CODABAR">Codabar</option>
+        <option value="MSI">MSI</option>
+        <option value="GS1-128">GS1-128</option>
+      </select>
+      <div id="formatGuideline"></div>
+      <div>
+        <button onclick="generateBarcodes()">ساخت بارکد</button>
+        <button onclick="saveBarcodes('png')">ذخیره به صورت PNG</button>
+        <button onclick="saveBarcodes('jpg')">ذخیره به صورت JPG</button>
+        <button onclick="savePDF()">ذخیره به صورت PDF</button>
+      </div>
+      <div class="barcode-container" id="barcodeContainer"></div>
+    </div>
+    
+    <!-- تب QR Code -->
+    <div id="qrTab" class="tabcontent">
+      <h3>ساخت QR Code</h3>
+      <textarea id="qrInput" placeholder="متن را وارد کنید (هر خط یک ورودی جدا)"></textarea>
+      <div>تعداد کاراکتر: <span id="qrCharCount">0</span></div>
+      <div>
+        <button onclick="generateQRCodes()">ساخت QR Code</button>
+        <button onclick="saveQRCodes()">ذخیره تمامی QR Codeها</button>
+      </div>
+      <div class="qr-container" id="qrCodeContainer"></div>
+    </div>
+    
+    <!-- تب کاهش حجم تصویر -->
+    <div id="compressTab" class="tabcontent">
+      <h3>کاهش حجم تصویر</h3>
+      <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+        <label for="saveFormat">فرمت ذخیره:</label>
+        <select id="saveFormat">
+          <option value="jpeg">JPG</option>
+          <option value="png">PNG</option>
+        </select>
+        <button onclick="saveCompressedImage()">ذخیره تصویر</button>
+      </div>
+      <div>
+        <input type="file" id="imageInput" accept="image/*">
+      </div>
+      <div id="imageInfo">
+         <div>حجم تصویر اولیه: <span id="originalSize">--</span></div>
+         <div>حجم تصویر بعد از کاهش: <span id="compressedSize">--</span></div>
+      </div>
+      <div style="margin-top: 10px;">
+        <label for="qualitySlider">کیفیت: </label>
+        <input type="range" id="qualitySlider" min="10" max="100" value="80" oninput="updateQuality(this.value)">
+        <span id="qualityValue">80</span>
+      </div>
+      <canvas id="compressedCanvas"></canvas>
+    </div>
+    
+    <!-- تب ویرایش عکس -->
+    <div id="editTab" class="tabcontent">
+      <h3>ویرایش عکس</h3>
+      <div>
+        <input type="file" id="editImageInput" accept="image/*">
+      </div>
+      <div class="edit-controls">
+        <div>
+          <label>درخشندگی: <span id="brightnessValue">100</span>%</label><br>
+          <input type="range" id="brightnessSlider" min="50" max="150" value="100" oninput="updateEditImage()">
+        </div>
+        <div>
+          <label>کانتراست: <span id="contrastValue">100</span>%</label><br>
+          <input type="range" id="contrastSlider" min="50" max="150" value="100" oninput="updateEditImage()">
+        </div>
+        <div>
+          <label>مات (بلر): <span id="blurValue">0</span>px</label><br>
+          <input type="range" id="blurSlider" min="0" max="10" value="0" step="0.5" oninput="updateEditImage()">
+        </div>
+        <div>
+          <label>شفافیت: <span id="opacityValue">100</span>%</label><br>
+          <input type="range" id="opacitySlider" min="0" max="100" value="100" oninput="updateEditImage()">
+        </div>
+        <div>
+          <label>فیلتر: </label><br>
+          <select id="filterSelect" onchange="updateEditImage()">
+            <option value="none">بدون فیلتر</option>
+            <option value="invert">نگاتیو</option>
+            <option value="grayscale">سیاه و سفید</option>
+            <option value="vignette">ویگنت</option>
+          </select>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 5px;">
+          <button onclick="resetEditImage()">ریست به اولیه</button>
+          <button onclick="rotateEditImage()">چرخاندن 90°</button>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <label for="saveEditFormat">فرمت ذخیره:</label>
+            <select id="saveEditFormat">
+              <option value="png">PNG</option>
+              <option value="jpeg">JPG</option>
+            </select>
+            <button onclick="saveEditImage()">ذخیره تصویر</button>
+          </div>
+        </div>
+      </div>
+      <!-- بخش تغییر اندازه به سانتی‌متر -->
+      <div id="resizeControls">
+        <label>عرض (سانتی‌متر): <input type="number" id="resizeWidth" placeholder="عرض" step="0.1"></label>
+        <label>ارتفاع (سانتی‌متر): <input type="number" id="resizeHeight" placeholder="ارتفاع" step="0.1"></label>
+        <button onclick="updateEditImage()">اعمال تغییر اندازه</button>
+      </div>
+      <canvas id="editCanvas"></canvas>
+    </div>
+    
+    <!-- تب گالری تصاویر -->
+    <div id="galleryTab" class="tabcontent">
+      <h3>گالری تصاویر</h3>
+      <input type="file" id="imageUpload" multiple accept="image/*">
+      <div class="controls">
+        <button onclick="saveGalleryPDF()">ذخیره گالری به PDF</button>
+        <button onclick="saveGalleryHTML()">ذخیره گالری به HTML</button>
+      </div>
+      <div class="gallery-container" id="galleryContainer"></div>
+    </div>
+    
+    <!-- تب تبدیل واحد -->
+    <div id="convertTab" class="tabcontent">
+      <h3>تب تبدیل واحد</h3>
+      <div>
+        <input type="number" id="inputValue" placeholder="عدد را وارد کنید">
+      </div>
+      <div>
+        <select id="category" onchange="updateUnitSelectors()">
+          <option value="length">طول</option>
+          <option value="weight">وزن</option>
+          <option value="volume" selected>حجم</option>
+          <option value="temperature">دما</option>
+          <option value="time">زمان</option>
+        </select>
+      </div>
+      <div id="unitSelectors">
+        <select id="inputUnit"></select>
+        <select id="outputUnit"></select>
+      </div>
+      <div>
+        <button onclick="convertUnits()">تبدیل</button>
+      </div>
+      <div>
+        <h4>نتیجه: <span id="result">-</span></h4>
+      </div>
+    </div>
+    
+  </div>
+  
+  <script>
+    // عملکرد تغییر تب‌ها
+    function openTab(evt, tabName) {
+      var i, tabcontent, tablinks;
+      tabcontent = document.getElementsByClassName("tabcontent");
+      for (i = 0; i < tabcontent.length; i++) {
+        tabcontent[i].style.display = "none";
+      }
+      tablinks = document.getElementsByClassName("tablinks");
+      for (i = 0; i < tablinks.length; i++) {
+        tablinks[i].className = tablinks[i].className.replace(" active", "");
+      }
+      document.getElementById(tabName).style.display = "block";
+      evt.currentTarget.className += " active";
+    }
+    // فعال‌سازی تب پیش‌فرض
+    document.getElementById("defaultOpen").click();
+    
+    // ------------------------------
+    // تب بارکد
+    const guidelines = {
+      "CODE128": "هر نوع کاراکتر مجاز است.",
+      "CODE39": "فقط شامل حروف انگلیسی بزرگ، اعداد و کاراکترهای خاص مانند '-' مجاز است.",
+      "EAN13": "اطلاعات باید شامل 12 یا 13 رقم باشد. در صورت 12 رقم، رقم کنترل محاسبه می‌شود.",
+      "EAN8": "اطلاعات باید شامل 7 یا 8 رقم باشد. در صورت 7 رقم، رقم کنترل محاسبه می‌شود.",
+      "ITF": "اطلاعات باید شامل تعداد ارقام زوج باشد.",
+      "CODABAR": "شامل اعداد و کاراکترهای خاص مانند '-' و '$' است.",
+      "MSI": "تنها شامل اعداد است.",
+      "GS1-128": "مشابه Code 128 می‌باشد؛ اطلاعات باید شامل تنها ارقام باشد."
+    };
+    function updateGuideline() {
+      const selectedFormat = document.getElementById("format").value;
+      document.getElementById("formatGuideline").textContent = guidelines[selectedFormat] || "";
+    }
+    updateGuideline();
+    document.getElementById("format").addEventListener("change", updateGuideline);
+    document.getElementById("barcodeInput").addEventListener("input", function() {
+      document.getElementById("charCount").textContent = this.value.length;
+    });
+    function generateBarcodes() {
+      const container = document.getElementById("barcodeContainer");
+      container.innerHTML = "";
+      const lines = document.getElementById("barcodeInput").value.split("\n");
+      const format = document.getElementById("format").value;
+      lines.forEach(line => {
+        let trimmed = line.trim();
+        if(trimmed === "") return;
+        let barcodeValue = trimmed;
+        if(format === "EAN13") {
+          if(!/^\d{12,13}$/.test(trimmed)){
+            let errorMsg = document.createElement("div");
+            errorMsg.style.color = "red";
+            errorMsg.textContent = `ورودی "${trimmed}" برای EAN 13 نامعتبر است.`;
+            container.appendChild(errorMsg);
+            return;
+          }
+          if(trimmed.length === 12){
+            let sum = 0;
+            for(let i=0; i<trimmed.length; i++){
+              let d = parseInt(trimmed.charAt(i), 10);
+              let weight = ((i+1) % 2 === 0) ? 3 : 1;
+              sum += d*weight;
+            }
+            let checkDigit = (10 - (sum % 10)) % 10;
+            barcodeValue = trimmed + checkDigit;
+          }
+        } else if(format === "EAN8") {
+          if(!/^\d{7,8}$/.test(trimmed)){
+            let errorMsg = document.createElement("div");
+            errorMsg.style.color = "red";
+            errorMsg.textContent = `ورودی "${trimmed}" برای EAN 8 نامعتبر است.`;
+            container.appendChild(errorMsg);
+            return;
+          }
+          if(trimmed.length === 7){
+            let sum = 0;
+            for(let i=0; i<trimmed.length; i++){
+              let d = parseInt(trimmed.charAt(i), 10);
+              let weight = ((i+1) % 2 !== 0) ? 3 : 1;
+              sum += d*weight;
+            }
+            let checkDigit = (10 - (sum % 10)) % 10;
+            barcodeValue = trimmed + checkDigit;
+          }
+        } else if(format === "GS1-128") {
+          if(!/^\d+$/.test(trimmed)){
+            let errorMsg = document.createElement("div");
+            errorMsg.style.color = "red";
+            errorMsg.textContent = `ورودی "${trimmed}" برای GS1-128 نامعتبر است.`;
+            container.appendChild(errorMsg);
+            return;
+          }
+        }
+        let canvas = document.createElement("canvas");
+        let barcodeFormat = (format === "GS1-128") ? "CODE128" : format;
+        const options = { format: barcodeFormat, displayValue: true, margin: 10 };
+        if(format === "GS1-128") { options.gs1 = true; }
+        try {
+          JsBarcode(canvas, barcodeValue, options);
+          canvas.setAttribute("data-barcode-text", trimmed);
+          container.appendChild(canvas);
+        } catch(error) {
+          let errorMsg = document.createElement("div");
+          errorMsg.style.color = "red";
+          errorMsg.textContent = `خطا در ساخت بارکد برای ورودی: "${trimmed}"`;
+          container.appendChild(errorMsg);
+        }
+      });
+    }
+    function sanitizeFilename(text) {
+      let name = text.replace(/\s+/g, '_').replace(/[^\w\-]/g, '');
+      return name === "" ? "barcode" : name;
+    }
+    function saveBarcodes(type) {
+      const canvases = document.querySelectorAll("#barcodeContainer canvas");
+      canvases.forEach(canvas => {
+        let barcodeText = canvas.getAttribute("data-barcode-text");
+        let filename = sanitizeFilename(barcodeText) + `.${type}`;
+        let link = document.createElement("a");
+        link.href = canvas.toDataURL(`image/${type}`);
+        link.download = filename;
+        link.click();
+      });
+    }
+    function savePDF() {
+      const { jsPDF } = window.jspdf;
+      const canvases = document.querySelectorAll("#barcodeContainer canvas");
+      if(canvases.length === 0) return;
+      const doc = new jsPDF('p', 'mm', 'a4');
+      canvases.forEach((canvas, index) => {
+        const imgData = canvas.toDataURL("image/png");
+        if(index > 0) doc.addPage();
+        doc.addImage(imgData, "PNG", 10, 10, 190, 50);
+      });
+      doc.save("barcodes.pdf");
+    }
+    
+    // ------------------------------
+    // تب QR Code
+    document.getElementById("qrInput").addEventListener("input", function(){
+      document.getElementById("qrCharCount").textContent = this.value.length;
+    });
+    function generateQRCodes(){
+      const container = document.getElementById("qrCodeContainer");
+      container.innerHTML = "";
+      const lines = document.getElementById("qrInput").value.split("\n");
+      lines.forEach(line => {
+        const trimmed = line.trim();
+        if(trimmed === "") return;
+        let itemDiv = document.createElement("div");
+        itemDiv.className = "qr-item";
+        let qrDiv = document.createElement("div");
+        qrDiv.setAttribute("data-qr-text", trimmed);
+        new QRCode(qrDiv, {
+          text: trimmed,
+          width: 160,
+          height: 160,
+          colorDark: "#000000",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.H
+        });
+        itemDiv.appendChild(qrDiv);
+        let caption = document.createElement("div");
+        caption.className = "caption";
+        caption.textContent = trimmed;
+        itemDiv.appendChild(caption);
+        container.appendChild(itemDiv);
+      });
+    }
+    function saveQRCodes(){
+      const qrContainers = document.querySelectorAll("#qrCodeContainer .qr-item > div");
+      qrContainers.forEach(qrDiv => {
+        let text = qrDiv.getAttribute("data-qr-text");
+        let dataUrl;
+        let canvas = qrDiv.querySelector("canvas");
+        if(canvas){
+          dataUrl = canvas.toDataURL("image/png");
+        } else {
+          let img = qrDiv.querySelector("img");
+          if(img) { dataUrl = img.src; }
+        }
+        if(dataUrl){
+          let link = document.createElement("a");
+          link.href = dataUrl;
+          link.download = "QR-" + sanitizeFilename(text) + ".png";
+          link.click();
+        }
+      });
+    }
+    
+    // ------------------------------
+    // تب کاهش حجم تصویر
+    let loadedImage;
+    document.getElementById("imageInput").addEventListener("change", function(e){
+      const file = e.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = function(event){
+        loadedImage = new Image();
+        loadedImage.onload = function(){
+          updateCompressedImage();
+        };
+        loadedImage.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+      let originalFileSize = file.size;
+      document.getElementById("originalSize").textContent = (originalFileSize/1024).toFixed(2) + " KB";
+    });
+    function updateQuality(value){
+      document.getElementById("qualityValue").textContent = value;
+      updateCompressedImage();
+    }
+    function updateCompressedImage(){
+      if(!loadedImage || !loadedImage.src) return;
+      const canvas = document.getElementById("compressedCanvas");
+      const ctx = canvas.getContext("2d");
+      let scaleFactor = 0.5;
+      canvas.width = loadedImage.width * scaleFactor;
+      canvas.height = loadedImage.height * scaleFactor;
+      ctx.drawImage(loadedImage, 0, 0, canvas.width, canvas.height);
+      let qualityVal = document.getElementById("qualitySlider").value;
+      let format = document.getElementById("saveFormat").value;
+      let dataUrl;
+      if(format === "jpeg"){
+        dataUrl = canvas.toDataURL("image/jpeg", qualityVal/100);
+      } else {
+        dataUrl = canvas.toDataURL("image/png");
+      }
+      const compSize = getApproxFileSize(dataUrl);
+      document.getElementById("compressedSize").textContent = (compSize/1024).toFixed(2) + " KB";
+    }
+    function getApproxFileSize(dataUrl){
+      let base64Str = dataUrl.split(',')[1];
+      let padding = (base64Str.slice(-2) === "==") ? 2 : (base64Str.slice(-1) === "=" ? 1 : 0);
+      let sizeInBytes = Math.ceil(base64Str.length * 3/4) - padding;
+      return sizeInBytes;
+    }
+    function saveCompressedImage(){
+      const canvas = document.getElementById("compressedCanvas");
+      let qualityVal = document.getElementById("qualitySlider").value;
+      let format = document.getElementById("saveFormat").value;
+      let dataUrl;
+      if(format === "jpeg"){
+        dataUrl = canvas.toDataURL("image/jpeg", qualityVal/100);
+      } else {
+        dataUrl = canvas.toDataURL("image/png");
+      }
+      let link = document.createElement("a");
+      link.href = dataUrl;
+      link.download = "compressedImage." + (format === "jpeg" ? "jpg" : "png");
+      link.click();
+    }
+    
+    // ------------------------------
+    // تب ویرایش عکس
+    let editImage = new Image();
+    let editRotation = 0;
+    document.getElementById("editImageInput").addEventListener("change", function(e){
+      const file = e.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = function(event){
+        editImage = new Image();
+        editImage.onload = function(){
+          editRotation = 0;
+          updateEditImage();
+        };
+        editImage.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+    function updateEditImage(){
+      if(!editImage.src) return;
+      const canvas = document.getElementById("editCanvas");
+      const ctx = canvas.getContext("2d");
+      
+      // دریافت تنظیمات تصویر
+      let brightness = document.getElementById("brightnessSlider").value;
+      document.getElementById("brightnessValue").textContent = brightness;
+      let contrast = document.getElementById("contrastSlider").value;
+      document.getElementById("contrastValue").textContent = contrast;
+      let blur = document.getElementById("blurSlider").value;
+      document.getElementById("blurValue").textContent = blur;
+      let opacity = document.getElementById("opacitySlider").value;
+      document.getElementById("opacityValue").textContent = opacity;
+      let filterOption = document.getElementById("filterSelect").value;
+      let angle = editRotation;
+      let rad = angle * Math.PI/180;
+      
+      // تعیین ابعاد تصویر اولیه
+      let width = editImage.width;
+      let height = editImage.height;
+      
+      // چک کردن تنظیمات تغییر اندازه وارد شده توسط کاربر (بر حسب سانتی‌متر)
+      let rw = parseFloat(document.getElementById("resizeWidth").value);
+      let rh = parseFloat(document.getElementById("resizeHeight").value);
+      const pxPerCm = 96/2.54; // تقریبی 37.8 پیکسل به ازای هر سانتی‌متر
+      if(!isNaN(rw) && rw > 0 && !isNaN(rh) && rh > 0){
+        width = rw * pxPerCm;
+        height = rh * pxPerCm;
+      }
+      
+      // تنظیم ابعاد بوم بر اساس چرخش
+      if(angle % 180 !== 0){
+        canvas.width = height;
+        canvas.height = width;
+      } else {
+        canvas.width = width;
+        canvas.height = height;
+      }
+      
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.translate(canvas.width/2, canvas.height/2);
+      ctx.rotate(rad);
+      ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) blur(${blur}px) opacity(${opacity}%)`;
+      if(filterOption === "invert"){
+        ctx.filter += " invert(100%)";
+      } else if(filterOption === "grayscale"){
+        ctx.filter += " grayscale(100%)";
+      }
+      // تصویر را در بوم کشیده و ابعاد جدید را اعمال می‌کند
+      ctx.drawImage(editImage, -width/2, -height/2, width, height);
+      ctx.restore();
+      if(filterOption === "vignette"){
+        let grd = ctx.createRadialGradient(canvas.width/2, canvas.height/2, Math.min(canvas.width, canvas.height)/2*0.5, 
+                              canvas.width/2, canvas.height/2, Math.max(canvas.width, canvas.height)/2);
+        grd.addColorStop(0, "rgba(0,0,0,0)");
+        grd.addColorStop(1, "rgba(0,0,0,0.5)");
+        ctx.fillStyle = grd;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+    function resetEditImage(){
+      document.getElementById("brightnessSlider").value = 100;
+      document.getElementById("contrastSlider").value = 100;
+      document.getElementById("blurSlider").value = 0;
+      document.getElementById("opacitySlider").value = 100;
+      document.getElementById("filterSelect").value = "none";
+      editRotation = 0;
+      updateEditImage();
+    }
+    function rotateEditImage(){
+      editRotation = (editRotation + 90) % 360;
+      updateEditImage();
+    }
+    function saveEditImage(){
+      const canvas = document.getElementById("editCanvas");
+      let format = document.getElementById("saveEditFormat").value;
+      let dataUrl;
+      if(format === "jpeg"){
+        dataUrl = canvas.toDataURL("image/jpeg");
+      } else {
+        dataUrl = canvas.toDataURL("image/png");
+      }
+      let link = document.createElement("a");
+      link.href = dataUrl;
+      link.download = "editedImage." + (format === "jpeg" ? "jpg" : "png");
+      link.click();
+    }
+    
+    // ------------------------------
+    // تب گالری تصاویر
+    document.getElementById("imageUpload").addEventListener("change", function(event){
+      const files = event.target.files;
+      const galleryContainer = document.getElementById("galleryContainer");
+      galleryContainer.innerHTML = "";
+      Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = function(e){
+          const imageBox = document.createElement("div");
+          imageBox.className = "image-box";
+          imageBox.innerHTML = `
+            <img src="${e.target.result}">
+            <textarea placeholder="توضیحات تصویر"></textarea>
+            <button onclick="saveSingleGalleryImage('${e.target.result}', this.previousElementSibling.value, '${file.name}')">ذخیره تکی</button>
+          `;
+          galleryContainer.appendChild(imageBox);
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+    function saveSingleGalleryImage(imgSrc, description, filename){
+      let canvas = document.createElement("canvas");
+      let ctx = canvas.getContext("2d");
+      let img = new Image();
+      img.onload = function(){
+        canvas.width = img.width;
+        canvas.height = img.height + 50;
+        ctx.drawImage(img, 0, 0);
+        ctx.fillStyle = "black";
+        ctx.font = "16px Arial";
+        ctx.fillText(description, 10, img.height + 20);
+        let link = document.createElement("a");
+        link.href = canvas.toDataURL("image/png");
+        link.download = filename.split('.')[0] + ".png";
+        link.click();
+      };
+      img.src = imgSrc;
+    }
+    function saveGalleryPDF(){
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      const images = document.querySelectorAll(".image-box img");
+      const descriptions = document.querySelectorAll(".image-box textarea");
+      images.forEach((img, index) => {
+        if(index > 0) doc.addPage();
+        let imgProps = doc.getImageProperties(img.src);
+        let pdfWidth = doc.internal.pageSize.getWidth();
+        let pdfHeight = doc.internal.pageSize.getHeight();
+        let imgWidth = imgProps.width;
+        let imgHeight = imgProps.height;
+        let scaleFactor = 100 / imgWidth;
+        let displayWidth = imgWidth * scaleFactor;
+        let displayHeight = imgHeight * scaleFactor;
+        let x = (pdfWidth - displayWidth) / 2;
+        let y = (pdfHeight - displayHeight) / 2 - 10;
+        doc.addImage(img.src, "PNG", x, y, displayWidth, displayHeight);
+        let text = descriptions[index].value;
+        doc.text(text, pdfWidth/2, y + displayHeight + 10, {align:"center"});
+      });
+      doc.save("gallery.pdf");
+    }
+    function saveGalleryHTML(){
+      let htmlContent = "<html><head><meta charset='UTF-8'><title>گالری تصاویر</title></head><body style='text-align:center;font-family:Arial;'>";
+      const images = document.querySelectorAll(".image-box img");
+      const descriptions = document.querySelectorAll(".image-box textarea");
+      images.forEach((img, index) => {
+        htmlContent += `<div style='border:1px solid #ccc;padding:10px;margin:10px;display:inline-block;'>
+          <img src="${img.src}" style='width:auto;max-width:100%;'><p>${descriptions[index].value}</p></div>`;
+      });
+      htmlContent += "</body></html>";
+      let blob = new Blob([htmlContent], { type: "text/html" });
+      let link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "gallery.html";
+      link.click();
+    }
+    
+    // ------------------------------
+    // تب تبدیل واحد (بخش ایزوله‌شده)
+    (function(){
+      // تعریف واحدهای مربوط به هر دسته
+      const lengthUnits = {
+        "mm": { name: "میلی‌متر", factor: 0.001 },
+        "cm": { name: "سانتی‌متر", factor: 0.01 },
+        "m":  { name: "متر", factor: 1 },
+        "km": { name: "کیلومتر", factor: 1000 },
+        "inch": { name: "اینچ", factor: 0.0254 },
+        "ft": { name: "فوت", factor: 0.3048 },
+        "yd": { name: "یارد", factor: 0.9144 },
+        "mi": { name: "مایل", factor: 1609.34 }
+      };
+      const weightUnits = {
+        "mg": { name: "میلی‌گرم", factor: 0.001 },
+        "g":  { name: "گرم", factor: 1 },
+        "kg": { name: "کیلوگرم", factor: 1000 },
+        "lb": { name: "پوند", factor: 453.592 },
+        "oz": { name: "اونس", factor: 28.3495 }
+      };
+      // در دسته حجم، اضافه شده: اونس (مایع) با فاکتور 0.0295735 (یعنی 1 اونس ≈ 29.5735 میلی‌لیتر)
+      const volumeUnits = {
+        "ml": { name: "میلی‌لیتر", factor: 0.001 },
+        "l":  { name: "لیتر", factor: 1 },
+        "oz": { name: "اونس", factor: 0.0295735 },
+        "gal": { name: "گالن", factor: 3.78541 },
+        "m3": { name: "متر مکعب", factor: 1000 }
+      };
+      const timeUnits = {
+        "ms": { name: "میلی‌ثانیه", factor: 0.001 },
+        "s":  { name: "ثانیه", factor: 1 },
+        "min": { name: "دقیقه", factor: 60 },
+        "h": { name: "ساعت", factor: 3600 },
+        "d": { name: "روز", factor: 86400 },
+        "week": { name: "هفته", factor: 604800 }
+      };
+      const temperatureUnits = {
+        "c": "سانتیگراد",
+        "f": "فارنهایت",
+        "k": "کلوین"
+      };
+      
+      // به‌روزرسانی گزینه‌های انتخاب واحد بر اساس دسته انتخابی
+      function updateUnitSelectors() {
+        const category = document.getElementById("category").value;
+        const inputUnitSelect = document.getElementById("inputUnit");
+        const outputUnitSelect = document.getElementById("outputUnit");
+        
+        inputUnitSelect.innerHTML = "";
+        outputUnitSelect.innerHTML = "";
+        
+        let units;
+        if(category === "length") {
+          units = lengthUnits;
+        } else if(category === "weight") {
+          units = weightUnits;
+        } else if(category === "volume") {
+          units = volumeUnits;
+        } else if(category === "time") {
+          units = timeUnits;
+        } else if(category === "temperature") {
+          units = temperatureUnits;
+        }
+        
+        if(category === "temperature") {
+          for(let key in units) {
+            let option = document.createElement("option");
+            option.value = key;
+            option.textContent = units[key];
+            inputUnitSelect.appendChild(option);
+            
+            let option2 = document.createElement("option");
+            option2.value = key;
+            option2.textContent = units[key];
+            outputUnitSelect.appendChild(option2);
+          }
+        } else {
+          for(let key in units) {
+            let option = document.createElement("option");
+            option.value = key;
+            option.textContent = units[key].name;
+            inputUnitSelect.appendChild(option);
+            
+            let option2 = document.createElement("option");
+            option2.value = key;
+            option2.textContent = units[key].name;
+            outputUnitSelect.appendChild(option2);
+          }
+        }
+      }
+      
+      // تابع تبدیل واحد
+      function convertUnits() {
+        const category = document.getElementById("category").value;
+        const inputValue = parseFloat(document.getElementById("inputValue").value);
+        const inputUnit = document.getElementById("inputUnit").value;
+        const outputUnit = document.getElementById("outputUnit").value;
+        let resultVal;
+        if(isNaN(inputValue)) {
+          resultVal = "ورودی عددی معتبر نیست";
+        } else {
+          if(category === "temperature") {
+            if(inputUnit === outputUnit) {
+              resultVal = inputValue;
+            } else if(inputUnit === "c") {
+              if(outputUnit === "f") {
+                resultVal = (inputValue * 9/5) + 32;
+              } else if(outputUnit === "k") {
+                resultVal = inputValue + 273.15;
+              }
+            } else if(inputUnit === "f") {
+              if(outputUnit === "c") {
+                resultVal = (inputValue - 32) * 5/9;
+              } else if(outputUnit === "k") {
+                resultVal = (inputValue - 32) * 5/9 + 273.15;
+              }
+            } else if(inputUnit === "k") {
+              if(outputUnit === "c") {
+                resultVal = inputValue - 273.15;
+              } else if(outputUnit === "f") {
+                resultVal = (inputValue - 273.15) * 9/5 + 32;
+              }
+            }
+          } else {
+            let unitFactors;
+            if(category === "length") {
+              unitFactors = lengthUnits;
+            } else if(category === "weight") {
+              unitFactors = weightUnits;
+            } else if(category === "volume") {
+              unitFactors = volumeUnits;
+            } else if(category === "time") {
+              unitFactors = timeUnits;
+            }
+            resultVal = (inputValue * unitFactors[inputUnit].factor) / unitFactors[outputUnit].factor;
+          }
+        }
+        document.getElementById("result").textContent = resultVal;
+      }
+      
+      // قرار دادن توابع به صورت global برای فراخوانی از HTML
+      window.updateUnitSelectors = updateUnitSelectors;
+      window.convertUnits = convertUnits;
+      
+      // اجرای اولیه زمانی که DOM کامل شد
+      document.addEventListener("DOMContentLoaded", updateUnitSelectors);
+    })(); // پایان IIFE تب تبدیل واحد
+  </script>
+</body>
+</html>
